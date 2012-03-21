@@ -1,14 +1,39 @@
+class MessageQueue
+    constructor:(@always_display) ->
+      @messages = [ ]
+
+    add:(m) -> 
+      @messages.push(m)
+
+    can_display:(new_message) ->
+      if @always_display 
+        return true
+      test = (m for m in @messages when m == new_message)
+      console.log(test)
+      return (test.length == 0)
+        
+message_queue = new MessageQueue(true)
+
 initialize = ->
   $command = $('#command')
   $command.focus()
   $command.on 'keyup', (event) ->
-    return if event.keyCode != 13
+    return if event.keyCode != 13  ## Magic number for Enter.
     $this = $(this)
-    if $this.val() != ''
-      socket.emit('command', $this.val())
-      $this.val('')
-
+    switch $this.val()
+      when '' then return
+      else 
+        [command, content...] = $this.val().split(" ")
+        # console.log("Splitted %s", command)
+        switch (command)
+          when "/filter" then message_queue.always_display = false
+          when "/showall" then message_queue.always_display = true
+        console.log(message_queue.always_display)
+    socket.emit('command', $this.val())
+    $this.val('')
+    
 socket = io.connect('http://#{window.location.host}')
+
 
 socket.on 'init', (data) ->
   userName = data.self
@@ -33,8 +58,12 @@ addUser = (user) ->
   $('#users').append($user)
 
 addMessage = (user, message) ->
-  $msg = $('<tr />')
-  $msg.html("<td class='username'>#{user}</td><td class='message'>#{message}</td>")
-  $('#messages').append($msg)
+  if (message_queue.can_display(message))
+    message_queue.add(message)
+    $msg = $('<tr />')
+    $msg.html("<td class='username'>#{user}</td><td class='message'>#{message}</td>")
+    $('#messages').append($msg)
+  else
+    console.log("Slienced %s", message)
 
 $ -> initialize()

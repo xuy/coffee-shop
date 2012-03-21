@@ -1,18 +1,65 @@
 (function() {
-  var addMessage, addUser, initialize, socket;
+  var MessageQueue, addMessage, addUser, initialize, message_queue, socket,
+    __slice = Array.prototype.slice;
+
+  MessageQueue = (function() {
+
+    function MessageQueue(always_display) {
+      this.always_display = always_display;
+      this.messages = [];
+    }
+
+    MessageQueue.prototype.add = function(m) {
+      return this.messages.push(m);
+    };
+
+    MessageQueue.prototype.can_display = function(new_message) {
+      var m, test;
+      if (this.always_display) return true;
+      test = (function() {
+        var _i, _len, _ref, _results;
+        _ref = this.messages;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          m = _ref[_i];
+          if (m === new_message) _results.push(m);
+        }
+        return _results;
+      }).call(this);
+      console.log(test);
+      return test.length === 0;
+    };
+
+    return MessageQueue;
+
+  })();
+
+  message_queue = new MessageQueue(true);
 
   initialize = function() {
     var $command;
     $command = $('#command');
     $command.focus();
     return $command.on('keyup', function(event) {
-      var $this;
+      var $this, command, content, _ref;
       if (event.keyCode !== 13) return;
       $this = $(this);
-      if ($this.val() !== '') {
-        socket.emit('command', $this.val());
-        return $this.val('');
+      switch ($this.val()) {
+        case '':
+          return;
+        default:
+          _ref = $this.val().split(" "), command = _ref[0], content = 2 <= _ref.length ? __slice.call(_ref, 1) : [];
+          switch (command) {
+            case "/filter":
+              message_queue.always_display = false;
+              break;
+            case "/showall":
+              message_queue.always_display = true;
+          }
+          console.log(message_queue.always_display);
       }
+      socket.emit('command', $this.val());
+      return $this.val('');
     });
   };
 
@@ -57,9 +104,14 @@
 
   addMessage = function(user, message) {
     var $msg;
-    $msg = $('<tr />');
-    $msg.html("<td class='username'>" + user + "</td><td class='message'>" + message + "</td>");
-    return $('#messages').append($msg);
+    if (message_queue.can_display(message)) {
+      message_queue.add(message);
+      $msg = $('<tr />');
+      $msg.html("<td class='username'>" + user + "</td><td class='message'>" + message + "</td>");
+      return $('#messages').append($msg);
+    } else {
+      return console.log("Slienced %s", message);
+    }
   };
 
   $(function() {

@@ -4,6 +4,8 @@ class Commander extends EventEmitter
   @toString: -> 'Commander'
 
   process: (input, user) ->
+    console.log("User is: %s", user)
+    console.log("Input is: %s", input)
     if input[0] == '/'
       @slashCommand(input, user)
     else
